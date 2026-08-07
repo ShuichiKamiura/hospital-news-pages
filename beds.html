@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>病床状況</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2563eb">
+<!-- iOS（Safari）はWeb App Manifestの対応が不完全なため、Apple独自のmeta/linkで
+     「ホーム画面に追加」時のアプリ名・アイコン・スタンドアロン表示を指定する -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="病床状況">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f5f6f8;
+    --card-bg: #ffffff;
+    --text: #1c1e21;
+    --muted: #6b7280;
+    --border: #e3e5e8;
+    --accent: #2563eb;
+    --danger: #e5484d;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181c;
+      --card-bg: #202329;
+      --text: #ecedee;
+      --muted: #9aa0a8;
+      --border: #34383f;
+      --accent: #6ea8fe;
+      --danger: #ff6b6f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 0 12px 40px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    line-height: 1.6;
+  }
+
+  /* ---- ロック画面 ---- */
+  #lock {
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .lock-card {
+    width: 100%;
+    max-width: 340px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px 22px;
+    text-align: center;
+  }
+  .lock-card h1 {
+    font-size: 1.1rem;
+    margin: 0 0 18px;
+  }
+  .lock-card input[type="password"] {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+  .lock-card button {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 1rem;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+  }
+  .lock-error {
+    color: var(--danger);
+    font-size: 0.85rem;
+    margin-top: 10px;
+    min-height: 1.2em;
+  }
+
+  /* ---- 共通レイアウト ---- */
+  header.page-header {
+    padding: 20px 4px 12px;
+  }
+  h1 { font-size: 1.3rem; margin: 0 0 4px; }
+  .generated-at { color: var(--muted); font-size: 0.85rem; }
+  .comment {
+    margin-top: 10px;
+    padding: 10px 14px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 0.95rem;
+  }
+  section { margin-top: 22px; }
+  h2 {
+    font-size: 1.05rem;
+    margin: 0 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--accent);
+  }
+  .event {
+    display: flex;
+    gap: 10px;
+    padding: 8px 4px;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.92rem;
+  }
+  .event:last-child { border-bottom: none; }
+  .event-time { flex: 0 0 auto; color: var(--accent); font-weight: 600; white-space: nowrap; }
+  .empty { color: var(--muted); font-size: 0.9rem; padding: 6px 4px; }
+
+  /* ---- タブ ---- */
+  .tabs { margin-top: 18px; }
+  .tab-nav {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab-btn {
+    flex: 0 0 auto;
+    padding: 8px 14px;
+    font-size: 0.88rem;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+  .tab-panel { display: none; padding-top: 14px; }
+  .tab-panel.active { display: block; }
+
+  /* ---- 記事カード ---- */
+  .source-heading {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin: 16px 0 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .source-heading:first-child { margin-top: 0; }
+  .article {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .article a { color: var(--text); text-decoration: none; font-weight: 600; font-size: 0.98rem; }
+  .article a:active, .article a:hover { color: var(--accent); }
+  .article-meta { margin-top: 4px; font-size: 0.78rem; color: var(--muted); }
+  .impact-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+  .article-summary { margin-top: 6px; font-size: 0.88rem; }
+
+  /* ---- 病床KPIカード ---- */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .kpi-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .kpi-card .kpi-label { font-size: 0.78rem; color: var(--muted); }
+  .kpi-card .kpi-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    margin-top: 2px;
+  }
+  .kpi-card .kpi-unit { font-size: 0.8rem; color: var(--muted); margin-left: 2px; }
+  .kpi-card.kpi-error .kpi-value { font-size: 0.85rem; color: var(--danger); font-weight: 400; }
+  .kpi-note { font-size: 0.75rem; color: var(--muted); margin-top: 10px; }
+  .forecast-table-wrap { overflow-x: auto; margin-top: 8px; }
+  .forecast-table { width: 100%; min-width: 420px; border-collapse: collapse; font-size: 0.88rem; }
+  .forecast-table th, .forecast-table td {
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .forecast-table th:first-child, .forecast-table td:first-child { text-align: left; }
+</style>
+</head>
+<body>
+
+<div id="lock">
+  <div class="lock-card">
+    <h1>🔒 病床状況</h1>
+    <form id="lock-form">
+      <input type="password" id="lock-password" autocomplete="current-password" placeholder="パスワード" autofocus>
+      <button type="submit">開く</button>
+      <div class="lock-error" id="lock-error"></div>
+    </form>
+  </div>
+</div>
+
+<div id="app" style="display:none"></div>
+
+<script>
+(function () {
+  var SALT_B64 = "RWMILAYhKx/Iw8Gxd4u6Gw==";
+  var IV_B64 = "PWd4hPGQwFf6qKsA";
+  var CIPHERTEXT_B64 = "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";
+  var ITERATIONS = 250000;
+
+  function b64ToBytes(b64) {
+    var bin = atob(b64);
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  }
+
+  async function deriveKey(password) {
+    var enc = new TextEncoder();
+    var keyMaterial = await crypto.subtle.importKey(
+      "raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]
+    );
+    return crypto.subtle.deriveKey(
+      { name: "PBKDF2", salt: b64ToBytes(SALT_B64), iterations: ITERATIONS, hash: "SHA-256" },
+      keyMaterial,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["decrypt"]
+    );
+  }
+
+  async function unlock(password) {
+    var key = await deriveKey(password);
+    var iv = b64ToBytes(IV_B64);
+    var ciphertext = b64ToBytes(CIPHERTEXT_B64);
+    var plainBuf = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, ciphertext);
+    return new TextDecoder().decode(plainBuf);
+  }
+
+  var form = document.getElementById("lock-form");
+  var errorEl = document.getElementById("lock-error");
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var password = document.getElementById("lock-password").value;
+    errorEl.textContent = "";
+    unlock(password).then(function (html) {
+      document.getElementById("app").innerHTML = html;
+      document.getElementById("app").style.display = "";
+      document.getElementById("lock").style.display = "none";
+    }).catch(function () {
+      errorEl.textContent = "パスワードが違います。";
+    });
+  });
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js").catch(function () {});
+  }
+
+  // タブ切り替え（#app注入後の要素にも効くようイベント委譲）
+  document.getElementById("app").addEventListener("click", function (e) {
+    var btn = e.target.closest(".tab-btn");
+    if (!btn) return;
+    var group = btn.closest(".tabs");
+    group.querySelectorAll(".tab-btn").forEach(function (b) { b.classList.remove("active"); });
+    btn.classList.add("active");
+    var target = btn.getAttribute("data-tab");
+    group.querySelectorAll(".tab-panel").forEach(function (p) {
+      p.classList.toggle("active", p.getAttribute("data-tab-panel") === target);
+    });
+  });
+})();
+</script>
+</body>
+</html>
