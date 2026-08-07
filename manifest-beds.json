@@ -1,8 +1,8 @@
 {
-  "name": "病院経営ニュース ブリーフィング",
-  "short_name": "病院ブリーフィング",
-  "start_url": "./index.html",
-  "scope": "./index.html",
+  "name": "病床状況",
+  "short_name": "病床状況",
+  "start_url": "./beds.html",
+  "scope": "./beds.html",
   "display": "standalone",
   "background_color": "#f5f6f8",
   "theme_color": "#2563eb",
